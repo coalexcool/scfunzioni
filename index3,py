@@ -1,0 +1,56 @@
+import httpx
+from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor
+from pprint import pprint
+import time
+
+# ::TIME OF EXECUTION: 219.1474792957306
+
+BASE_URL = "https://streamingcommunity"
+
+def get_urls():
+    tld_base = []
+    for x in open("tld_list.txt", "r"):
+        tld_base.append(BASE_URL + "." + str(x).strip().lower())
+    return tld_base
+
+async def check_1(url):
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, timeout=5)
+            if response.status_code == 200:
+                bs = BeautifulSoup(response.content, features="html.parser")
+                for x in bs.findAll("meta", {"name": "author"}):
+                    if "StreamingCommunity" in x.get("content"):
+                        return url
+        except:
+            pass
+    return None
+
+async def main():
+    urls = get_urls()
+    results = []
+    tasks = []
+
+    #start time execution
+    inizio = time.time()
+
+    async with httpx.AsyncClient() as client:
+        for url in urls:
+            tasks.append(check_1(url))
+        results = await asyncio.gather(*tasks)
+
+    results = [result for result in results if result is not None]  # Rimuove i risultati None
+
+    print("\n================================")
+    for result in results:
+        print(result)
+
+    #end time execution
+    fine = time.time()
+    tempo_di_esecuzione = fine - inizio
+    print(tempo_di_esecuzione)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
